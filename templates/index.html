@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <h3>AWS Resources</h3>
+        <button onclick="toggleResource('asg')">Toggle ASGs</button>
+        <button onclick="toggleResource('elb')">Toggle ELBs</button>
+        <button onclick="toggleResource('nat')">Toggle NAT Gateways</button>
+        <button onclick="toggleResource('igw')">Toggle IGWs</button>
+    </div>
+    <div class="toggle-btn" onclick="toggleSidebar()">☰</div>
+    <iframe id="graph-frame" src="/graph" width="100%" height="750px"></iframe>
+</body>
+</html>

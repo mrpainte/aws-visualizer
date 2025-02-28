@@ -1,0 +1,19 @@
+body { background-color: black; color: white; }
+.sidebar {
+    width: 250px;
+    position: fixed;
+    left: 0;
+    height: 100%;
+    background: #111;
+    padding: 15px;
+    transition: 0.3s;
+}
+.sidebar.closed { width: 0; padding: 0; }
+.toggle-btn {
+    position: absolute;
+    left: 260px;
+    top: 20px;
+    background: gray;
+    padding: 10px;
+    cursor: pointer;
+}
