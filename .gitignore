@@ -3,7 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode/
-
+static/aws_graph.html
+templates/aws_graph.html
 # C extensions
 *.so
 

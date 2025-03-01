@@ -143,41 +143,43 @@ def fetch_security_groups(graph, details_list):
 def fetch_ec2_instances2(graph, instance_info, details_list):
     """Fetch EC2 instances, add them to the graph, and connect them to security groups."""
     instances = ec2_client.describe_instances()
-    for reservation in instances["Reservations"]:
-        for instance in reservation["Instances"]:
-            instance_id = instance["InstanceId"]
-            subnet_id = instance["SubnetId"]
-            instance_info[instance_id] = instance  # Store metadata
-            instance_name = next((tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"), instance_id)
+    if "Reservations" in instances:
+        for reservation in instances["Reservations"]:
+            if "Instances" in reservation:
+                for instance in reservation["Instances"]:
+                    instance_id = instance["InstanceId"]
+                    subnet_id = instance["SubnetId"]
+                    instance_info[instance_id] = instance  # Store metadata
+                    instance_name = next((tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"), instance_id)
 
-            graph.add_node(
-                instance_id,
-                label=f"EC2: {instance_name}",
-                color="green",
-                title=f"Instance ID: {instance_id}\nSubnet: {subnet_id}\nState: {instance['State']['Name']}",
-            )
-            # add the instance node to the subnet node
-            graph.add_edge(subnet_id, instance_id, color="gray", title="Located In")
+                    graph.add_node(
+                        instance_id,
+                        label=f"EC2: {instance_name}",
+                        color="green",
+                        title=f"Instance ID: {instance_id}\nSubnet: {subnet_id}\nState: {instance['State']['Name']}",
+                    )
+                    # add the instance node to the subnet node
+                    graph.add_edge(subnet_id, instance_id, color="gray", title="Located In")
 
-            # Connect EC2 to its security groups
-            for sg in instance.get("SecurityGroups", []):
-                sg_id = sg["GroupId"]
-                sg_name = sg["GroupName"]
-                sg_details = ec2_client.describe_security_groups(GroupIds=[sg_id])["SecurityGroups"][0]
-                inbound_rules = sg_details["IpPermissions"]
-                outbound_rules = sg_details["IpPermissionsEgress"]
+                    # Connect EC2 to its security groups
+                    for sg in instance.get("SecurityGroups", []):
+                        sg_id = sg["GroupId"]
+                        sg_name = sg["GroupName"]
+                        sg_details = ec2_client.describe_security_groups(GroupIds=[sg_id])["SecurityGroups"][0]
+                        inbound_rules = sg_details["IpPermissions"]
+                        outbound_rules = sg_details["IpPermissionsEgress"]
 
-                inbound_rules_str = "\n".join([f"Inbound: {rule}" for rule in inbound_rules])
-                outbound_rules_str = "\n".join([f"Outbound: {rule}" for rule in outbound_rules])
+                        inbound_rules_str = "\n".join([f"Inbound: {rule}" for rule in inbound_rules])
+                        outbound_rules_str = "\n".join([f"Outbound: {rule}" for rule in outbound_rules])
 
-                sg_title = f"SG: {sg_name}\nInbound Rules:\n{inbound_rules_str}\nOutbound Rules:\n{outbound_rules_str}"
+                        sg_title = f"SG: {sg_name}\nInbound Rules:\n{inbound_rules_str}\nOutbound Rules:\n{outbound_rules_str}"
 
-                graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue", title=sg_title)
-                # add the sg node to the instance node
-                graph.add_edge(instance_id, sg_id, color="gray", title="Attached to SG")
+                        graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue", title=sg_title)
+                        # add the sg node to the instance node
+                        graph.add_edge(instance_id, sg_id, color="gray", title="Attached to SG")
 
-            # Add instance details to the details list
-            details_list.append(f"Instance ID: {instance_id}, Name: {instance_name}, State: {instance['State']['Name']}, Subnet: {subnet_id}")
+                    # Add instance details to the details list
+                    details_list.append(f"Instance ID: {instance_id}, Name: {instance_name}, State: {instance['State']['Name']}, Subnet: {subnet_id}")
 
     return instance_info
 

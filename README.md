@@ -1,2 +1,2 @@
 # aws-visualizer
-![screenshot](screenshots/prototype2.png)
+![screenshot](screenshots/prototype.png)
