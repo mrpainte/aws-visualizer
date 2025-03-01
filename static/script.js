@@ -34,7 +34,14 @@ function toggleDetailsSidebar() {
 
 // Toggle visibility of AWS resource types (EC2, ASG, ELB, etc.)
 function toggleVisibility(resourceType) {
-    fetchDetails(resourceType);
+    fetch(`/toggle/${resourceType}`, { method: "POST" })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                refreshGraph();
+                fetchDetails(resourceType);
+            }
+        });
 }
 
 // Refresh the graph iframe to reflect new changes
@@ -50,14 +57,22 @@ function fetchDetails(resourceType) {
                 let detailsSidebar = document.getElementById("details-sidebar");
                 let detailsTitle = document.getElementById("details-title");
                 let detailsList = document.getElementById("details-list");
+                let detailsTableBody = document.getElementById("details-table-body");
 
                 detailsTitle.textContent = `${resourceType.toUpperCase()} Details`;
                 detailsList.innerHTML = "";
+                detailsTableBody.innerHTML = "";
 
                 data.details.forEach(detail => {
                     let listItem = document.createElement("li");
                     listItem.textContent = detail;
                     detailsList.appendChild(listItem);
+
+                    let tableRow = document.createElement("tr");
+                    let tableCell = document.createElement("td");
+                    tableCell.textContent = detail;
+                    tableRow.appendChild(tableCell);
+                    detailsTableBody.appendChild(tableRow);
                 });
 
                 detailsSidebar.classList.remove("collapsed");

@@ -88,8 +88,8 @@
                   
 
                   // parsing and collecting nodes and edges from the python
-                  nodes = new vis.DataSet([{"color": "green", "font": {"color": "white"}, "id": "i-034df6d0f8f0b9787", "label": "EC2: test", "physics": false, "shape": "dot", "size": 10, "title": "Instance ID: i-034df6d0f8f0b9787\nSubnet: subnet-03cd02f2eb770e688\nState: stopped"}, {"color": "purple", "font": {"color": "white"}, "id": "subnet-03cd02f2eb770e688", "label": "Subnet: subnet1", "physics": false, "shape": "dot", "size": 10, "title": "Subnet in VPC vpc-0ddb14806b75deb2d"}, {"color": "blue", "font": {"color": "white"}, "id": "sg-00837362d4fc30d34", "label": "SG: webservices", "physics": false, "shape": "dot", "size": 10}, {"color": "pink", "font": {"color": "white"}, "id": "acl-0b385dfc6ff8f3c6d", "label": "NACL: acl-0b385dfc6ff8f3c6d", "physics": false, "shape": "dot", "size": 10}, {"color": "purple", "font": {"color": "white"}, "id": "subnet-0f2591fbccfd80f22", "label": "Subnet: subnet2", "physics": false, "shape": "dot", "size": 10, "title": "Subnet in VPC vpc-0ddb14806b75deb2d"}]);
-                  edges = new vis.DataSet([{"color": "gray", "from": "i-034df6d0f8f0b9787", "title": "Located In", "to": "subnet-03cd02f2eb770e688", "width": 1}, {"color": "gray", "from": "i-034df6d0f8f0b9787", "title": "Attached to SG", "to": "sg-00837362d4fc30d34", "width": 1}, {"color": "gray", "from": "subnet-03cd02f2eb770e688", "title": "Applies to Subnet", "to": "acl-0b385dfc6ff8f3c6d", "width": 1}, {"color": "gray", "from": "subnet-0f2591fbccfd80f22", "title": "Applies to Subnet", "to": "acl-0b385dfc6ff8f3c6d", "width": 1}]);
+                  nodes = new vis.DataSet([{"color": "green", "font": {"color": "white"}, "id": "i-034df6d0f8f0b9787", "label": "EC2: test", "physics": false, "shape": "dot", "size": 10, "title": "Instance ID: i-034df6d0f8f0b9787\nSubnet: subnet-03cd02f2eb770e688\nState: stopped"}, {"color": "purple", "font": {"color": "white"}, "id": "subnet-03cd02f2eb770e688", "label": "Subnet: subnet1", "physics": false, "shape": "dot", "size": 10, "title": "Subnet in VPC vpc-0ddb14806b75deb2d"}, {"color": "blue", "font": {"color": "white"}, "id": "sg-00837362d4fc30d34", "label": "SG: webservices", "physics": false, "shape": "dot", "size": 10, "title": "SG: webservices\nInbound Rules:\nInbound: {\u0027IpProtocol\u0027: \u0027tcp\u0027, \u0027FromPort\u0027: 80, \u0027ToPort\u0027: 80, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u00270.0.0.0/0\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}\nInbound: {\u0027IpProtocol\u0027: \u0027tcp\u0027, \u0027FromPort\u0027: 443, \u0027ToPort\u0027: 443, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u00270.0.0.0/0\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}\nOutbound Rules:\nOutbound: {\u0027IpProtocol\u0027: \u0027-1\u0027, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u00270.0.0.0/0\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}"}, {"color": "blue", "font": {"color": "white"}, "id": "sg-093e2f78cce3c279a", "label": "SG: ssh", "physics": false, "shape": "dot", "size": 10, "title": "SG: ssh\nInbound Rules:\nInbound: {\u0027IpProtocol\u0027: \u0027tcp\u0027, \u0027FromPort\u0027: 22, \u0027ToPort\u0027: 22, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u0027204.232.94.45/32\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}\nOutbound Rules:\nOutbound: {\u0027IpProtocol\u0027: \u0027-1\u0027, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u00270.0.0.0/0\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}"}, {"color": "pink", "font": {"color": "white"}, "id": "acl-0b385dfc6ff8f3c6d", "label": "NACL: acl-0b385dfc6ff8f3c6d", "physics": false, "shape": "dot", "size": 10}, {"color": "purple", "font": {"color": "white"}, "id": "subnet-0f2591fbccfd80f22", "label": "Subnet: subnet2", "physics": false, "shape": "dot", "size": 10, "title": "Subnet in VPC vpc-0ddb14806b75deb2d"}, {"color": "blue", "font": {"color": "white"}, "id": "sg-097fd3c688e159646", "label": "SG: default", "physics": false, "shape": "dot", "size": 10, "title": "SG: default\nInbound Rules:\nInbound: {\u0027IpProtocol\u0027: \u0027-1\u0027, \u0027UserIdGroupPairs\u0027: [{\u0027UserId\u0027: \u0027862297505534\u0027, \u0027GroupId\u0027: \u0027sg-097fd3c688e159646\u0027}], \u0027IpRanges\u0027: [], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}\nOutbound Rules:\nOutbound: {\u0027IpProtocol\u0027: \u0027-1\u0027, \u0027UserIdGroupPairs\u0027: [], \u0027IpRanges\u0027: [{\u0027CidrIp\u0027: \u00270.0.0.0/0\u0027}], \u0027Ipv6Ranges\u0027: [], \u0027PrefixListIds\u0027: []}"}]);
+                  edges = new vis.DataSet([{"color": "gray", "from": "i-034df6d0f8f0b9787", "title": "Located In", "to": "subnet-03cd02f2eb770e688", "width": 1}, {"color": "gray", "from": "i-034df6d0f8f0b9787", "title": "Attached to SG", "to": "sg-00837362d4fc30d34", "width": 1}, {"color": "gray", "from": "i-034df6d0f8f0b9787", "title": "Attached to SG", "to": "sg-093e2f78cce3c279a", "width": 1}, {"color": "gray", "from": "subnet-03cd02f2eb770e688", "title": "Applies to Subnet", "to": "acl-0b385dfc6ff8f3c6d", "width": 1}, {"color": "gray", "from": "subnet-0f2591fbccfd80f22", "title": "Applies to Subnet", "to": "acl-0b385dfc6ff8f3c6d", "width": 1}]);
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });
@@ -100,35 +100,7 @@
                   // adding nodes and edges to the graph
                   data = {nodes: nodes, edges: edges};
 
-                  var options = {
-    "configure": {
-        "enabled": false
-    },
-    "edges": {
-        "color": {
-            "inherit": true
-        },
-        "smooth": {
-            "enabled": true,
-            "type": "dynamic"
-        }
-    },
-    "interaction": {
-        "dragNodes": true,
-        "hideEdgesOnDrag": false,
-        "hideNodesOnDrag": false
-    },
-    "physics": {
-        "enabled": true,
-        "stabilization": {
-            "enabled": true,
-            "fit": true,
-            "iterations": 1000,
-            "onlyDynamicEdges": false,
-            "updateInterval": 50
-        }
-    }
-};
+                  var options = {"physics": {"enabled": true, "barnesHut": {"gravitationalConstant": -8000, "centralGravity": 0.3, "springLength": 95, "springConstant": 0.04, "damping": 0.09, "avoidOverlap": 0.1}, "minVelocity": 0.75}, "nodes": {"scaling": {"min": 10, "max": 30}}, "edges": {"scaling": {"min": 1, "max": 5}}};
 
                   
 

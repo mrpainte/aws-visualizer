@@ -15,7 +15,9 @@ resource_details = {
     "elb": [],
     "nat": [],
     "igw": [],
-    "nacl": []
+    "nacl": [],
+    "subnet": [],
+    "sg": []
 }
 
 # Global visibility states
@@ -25,7 +27,9 @@ visibility_states = {
     "elb": True,
     "nat": True,
     "igw": True,
-    "nacl": True
+    "nacl": True,
+    "subnet": True,
+    "sg": True
 }
 
 def set_clients(ec2, elb, elbv2, asg):
@@ -49,10 +53,12 @@ def build_graph(visibility_states, resource_details):
     resource_details["nat"] = []
     resource_details["igw"] = []
     resource_details["nacl"] = []
+    resource_details["subnet"] = []
+    resource_details["sg"] = []
 
     if visibility_states["ec2"]:
         instance_info = fetch_ec2_instances2(graph, instance_info, resource_details["ec2"])
-    subnet_mapping = fetch_subnets(graph)
+    subnet_mapping = fetch_subnets(graph, resource_details["subnet"])
     if visibility_states["asg"]:
         fetch_asgs(graph, resource_details["asg"])
     if visibility_states["elb"]:
@@ -63,17 +69,43 @@ def build_graph(visibility_states, resource_details):
         fetch_internet_gateways(graph, resource_details["igw"])
     if visibility_states["nacl"]:
         fetch_network_acls(graph, resource_details["nacl"])
+    if visibility_states["sg"]:
+        fetch_security_groups(graph, resource_details["sg"])
     fetch_route_tables(graph, subnet_mapping)
     
     save_graph(graph)
 
-def fetch_ec2_instances(graph):
-    """Fetch and add EC2 instances to the graph."""
-    instances = ec2_client.describe_instances()["Reservations"]
-    for res in instances:
-        for inst in res["Instances"]:
-            inst_id = inst["InstanceId"]
-            graph.add_node(inst_id, label=f"EC2: {inst_id}", color="green")
+def fetch_subnets(graph, details_list):
+    """Fetch subnets and add them to the graph."""
+    subnets = ec2_client.describe_subnets()
+    subnet_mapping = {}  # Store subnet-to-VPC relationships
+    for subnet in subnets["Subnets"]:
+        subnet_id = subnet["SubnetId"]
+        vpc_id = subnet["VpcId"]
+        name_tag = next((tag["Value"] for tag in subnet.get("Tags", []) if tag["Key"] == "Name"), subnet_id)
+        graph.add_node(subnet_id, label=f"Subnet: {name_tag}", color="purple", title=f"Subnet in VPC {vpc_id}")
+        subnet_mapping[subnet_id] = vpc_id
+        # Add subnet details to the details list
+        details_list.append(f"Subnet ID: {subnet_id}, VPC ID: {vpc_id}, Name: {name_tag}")
+    return subnet_mapping
+
+def fetch_security_groups(graph, details_list):
+    """Fetch security groups and add them to the graph."""
+    security_groups = ec2_client.describe_security_groups()["SecurityGroups"]
+    for sg in security_groups:
+        sg_id = sg["GroupId"]
+        sg_name = sg["GroupName"]
+        inbound_rules = sg["IpPermissions"]
+        outbound_rules = sg["IpPermissionsEgress"]
+
+        inbound_rules_str = "\n".join([f"Inbound: {rule}" for rule in inbound_rules])
+        outbound_rules_str = "\n".join([f"Outbound: {rule}" for rule in outbound_rules])
+
+        sg_title = f"SG: {sg_name}\nInbound Rules:\n{inbound_rules_str}\nOutbound Rules:\n{outbound_rules_str}"
+
+        graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue", title=sg_title)
+        # Add security group details to the details list
+        details_list.append(f"SG ID: {sg_id}, Name: {sg_name}, Inbound Rules: {inbound_rules_str}, Outbound Rules: {outbound_rules_str}")
 
 def fetch_ec2_instances2(graph, instance_info, details_list):
     """Fetch EC2 instances, add them to the graph, and connect them to security groups."""
@@ -98,8 +130,17 @@ def fetch_ec2_instances2(graph, instance_info, details_list):
             for sg in instance.get("SecurityGroups", []):
                 sg_id = sg["GroupId"]
                 sg_name = sg["GroupName"]
-                graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue")
-                #add the sg node to the instance node
+                sg_details = ec2_client.describe_security_groups(GroupIds=[sg_id])["SecurityGroups"][0]
+                inbound_rules = sg_details["IpPermissions"]
+                outbound_rules = sg_details["IpPermissionsEgress"]
+
+                inbound_rules_str = "\n".join([f"Inbound: {rule}" for rule in inbound_rules])
+                outbound_rules_str = "\n".join([f"Outbound: {rule}" for rule in outbound_rules])
+
+                sg_title = f"SG: {sg_name}\nInbound Rules:\n{inbound_rules_str}\nOutbound Rules:\n{outbound_rules_str}"
+
+                graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue", title=sg_title)
+                # add the sg node to the instance node
                 graph.add_edge(instance_id, sg_id, color="gray", title="Attached to SG")
 
             # Add instance details to the details list
@@ -117,26 +158,6 @@ def fetch_asgs(graph, details_list):
             graph.add_edge(asg_name, instance["InstanceId"], color="gray", title="ASG Manages")
         # Add ASG details to the details list
         details_list.append(f"ASG Name: {asg_name}, Instances: {len(asg['Instances'])}")
-
-def fetch_load_balancers(graph):
-    """Fetch Load Balancers and link them to EC2 instances."""
-    elbs = elb_client.describe_load_balancers()["LoadBalancerDescriptions"]
-    for elb in elbs:
-        elb_name = elb["LoadBalancerName"]
-        graph.add_node(elb_name, label=f"ELB: {elb_name}", color="orange")
-
-        for instance in elb.get("Instances", []):
-            graph.add_edge(elb_name, instance["InstanceId"], color="blue", title="ELB Directs To")
-
-    # Fetch Application Load Balancers (ALBs) as well
-    elbv2 = elbv2_client.describe_load_balancers()["LoadBalancers"]
-    for alb in elbv2:
-        alb_name = alb["LoadBalancerName"]
-        graph.add_node(alb_name, label=f"ALB: {alb_name}", color="red")
-
-        # Connect to target groups (simplified example)
-        for target_group in alb.get("TargetGroups", []):
-            graph.add_edge(alb_name, target_group["TargetGroupName"], color="purple", title="ALB Directs To")
 
 def fetch_load_balancers2(graph, instance_info, details_list):
     """Fetch ALBs and ELBs, then link them to their EC2 instances."""
@@ -221,18 +242,6 @@ def fetch_network_acls(graph, details_list):
         # Add Network ACL details to the details list
         details_list.append(f"NACL ID: {nacl_id}")
 
-def fetch_subnets(graph):
-    """Fetch subnets and add them to the graph."""
-    subnets = ec2_client.describe_subnets()
-    subnet_mapping = {}  # Store subnet-to-VPC relationships
-    for subnet in subnets["Subnets"]:
-        subnet_id = subnet["SubnetId"]
-        vpc_id = subnet["VpcId"]
-        name_tag = next((tag["Value"] for tag in subnet.get("Tags", []) if tag["Key"] == "Name"), subnet_id)
-        graph.add_node(subnet_id, label=f"Subnet: {name_tag}", color="purple", title=f"Subnet in VPC {vpc_id}")
-        subnet_mapping[subnet_id] = vpc_id
-    return subnet_mapping
-
 def fetch_route_tables(graph, subnet_mapping):
     """Fetch route tables and determine subnet-to-subnet connectivity."""
     route_tables = ec2_client.describe_route_tables()
@@ -264,11 +273,41 @@ def save_graph(graph):
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
     net.from_nx(graph)
     
+    # Set physics options to enable auto-scaling
+    net.set_options("""
+    var options = {
+        "physics": {
+            "enabled": true,
+            "barnesHut": {
+                "gravitationalConstant": -8000,
+                "centralGravity": 0.3,
+                "springLength": 95,
+                "springConstant": 0.04,
+                "damping": 0.09,
+                "avoidOverlap": 0.1
+            },
+            "minVelocity": 0.75
+        },
+        "nodes": {
+            "scaling": {
+                "min": 10,
+                "max": 30
+            }
+        },
+        "edges": {
+            "scaling": {
+                "min": 1,
+                "max": 5
+            }
+        }
+    }
+    """)
+    
     # Set physics options to make nodes sticky
     for node in net.nodes:
         node['physics'] = False  # Disable physics for this node (makes it sticky)
     
-     # Add edge labels
+    # Add edge labels
     for edge in net.edges:
         if 'label' in edge:
             edge['title'] = edge['label']  # Display the label as a tooltip

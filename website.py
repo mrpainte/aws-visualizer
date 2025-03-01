@@ -7,7 +7,9 @@ visibility_states = {
     "elb": True,
     "nat": True,
     "igw": True,
-    "nacl": True
+    "nacl": True,
+    "subnet": True,
+    "sg": True
 }
 
 resource_details = {
@@ -16,7 +18,9 @@ resource_details = {
     "elb": [],
     "nat": [],
     "igw": [],
-    "nacl": []
+    "nacl": [],
+    "subnet": [],
+    "sg": []
 }
 
 def init_app(app):
