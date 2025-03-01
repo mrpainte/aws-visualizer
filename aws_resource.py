@@ -17,7 +17,8 @@ resource_details = {
     "igw": [],
     "nacl": [],
     "subnet": [],
-    "sg": []
+    "sg": [],
+    "route_table": []  # Add route_table to resource details
 }
 
 # Global visibility states
@@ -29,7 +30,8 @@ visibility_states = {
     "igw": True,
     "nacl": True,
     "subnet": True,
-    "sg": True
+    "sg": True,
+    "route_table": True  # Add route_table to visibility states
 }
 
 def set_clients(ec2, elb, elbv2, asg):
@@ -41,7 +43,7 @@ def fetch_aws_data():
     """Periodically fetch AWS data."""
     while True:
         build_graph(visibility_states, resource_details)
-        time.sleep(15)  # Refresh every 2 minutes
+        time.sleep(120)  # Refresh every 2 minutes
 
 def build_graph(visibility_states, resource_details):
     """Builds the AWS connectivity graph."""
@@ -55,6 +57,7 @@ def build_graph(visibility_states, resource_details):
     resource_details["nacl"] = []
     resource_details["subnet"] = []
     resource_details["sg"] = []
+    resource_details["route_table"] = []  # Initialize route_table details
 
     if visibility_states["ec2"]:
         instance_info = fetch_ec2_instances2(graph, instance_info, resource_details["ec2"])
@@ -71,9 +74,39 @@ def build_graph(visibility_states, resource_details):
         fetch_network_acls(graph, resource_details["nacl"])
     if visibility_states["sg"]:
         fetch_security_groups(graph, resource_details["sg"])
-    fetch_route_tables(graph, subnet_mapping)
-    
+    if visibility_states["route_table"]:
+        fetch_route_tables(graph, subnet_mapping, resource_details["route_table"])  # Pass route_table details list
     save_graph(graph)
+
+def fetch_route_tables(graph, subnet_mapping, details_list):
+    """Fetch route tables and determine subnet-to-subnet connectivity."""
+    route_tables = ec2_client.describe_route_tables()
+    subnet_links = set()
+    
+    for rt in route_tables["RouteTables"]:
+        rt_id = rt["RouteTableId"]
+        graph.add_node(rt_id, label=f"RT: {rt_id}", color="brown", title=f"Route Table: {rt_id}")
+        details_list.append(f"Route Table ID: {rt_id}")
+
+        for assoc in rt.get("Associations", []):
+            subnet_id = assoc.get("SubnetId")
+            if not subnet_id:
+                continue  # Skip non-explicit subnet associations
+            graph.add_edge(rt_id, subnet_id, color="gray", title="Associated with Subnet")
+
+            for route in rt["Routes"]:
+                if "DestinationCidrBlock" in route and "VpcPeeringConnectionId" in route:
+                    # Peered VPCs - assume full communication
+                    for other_subnet, vpc in subnet_mapping.items():
+                        if vpc == subnet_mapping[subnet_id] and other_subnet != subnet_id:
+                            subnet_links.add((subnet_id, other_subnet))
+                elif "GatewayId" in route and "igw-" in route["GatewayId"]:
+                    # Internet Gateway (public access)
+                    graph.add_edge(subnet_id, "Internet", color="yellow")
+
+    # Add subnet-to-subnet edges
+    for s1, s2 in subnet_links:
+        graph.add_edge(s1, s2, color="white", title="Connected via Route Table")
 
 def fetch_subnets(graph, details_list):
     """Fetch subnets and add them to the graph."""
@@ -241,31 +274,6 @@ def fetch_network_acls(graph, details_list):
 
         # Add Network ACL details to the details list
         details_list.append(f"NACL ID: {nacl_id}")
-
-def fetch_route_tables(graph, subnet_mapping):
-    """Fetch route tables and determine subnet-to-subnet connectivity."""
-    route_tables = ec2_client.describe_route_tables()
-    subnet_links = set()
-    
-    for rt in route_tables["RouteTables"]:
-        for assoc in rt.get("Associations", []):
-            subnet_id = assoc.get("SubnetId")
-            if not subnet_id:
-                continue  # Skip non-explicit subnet associations
-            
-            for route in rt["Routes"]:
-                if "DestinationCidrBlock" in route and "VpcPeeringConnectionId" in route:
-                    # Peered VPCs - assume full communication
-                    for other_subnet, vpc in subnet_mapping.items():
-                        if vpc == subnet_mapping[subnet_id] and other_subnet != subnet_id:
-                            subnet_links.add((subnet_id, other_subnet))
-                elif "GatewayId" in route and "igw-" in route["GatewayId"]:
-                    # Internet Gateway (public access)
-                    graph.add_edge(subnet_id, "Internet", color="yellow")
-
-    # Add subnet-to-subnet edges
-    for s1, s2 in subnet_links:
-        graph.add_edge(s1, s2, color="white", title="Connected via Route Table")
 
 def save_graph(graph):
     """Save graph as an interactive HTML file."""

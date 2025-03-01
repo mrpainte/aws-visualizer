@@ -9,7 +9,8 @@ visibility_states = {
     "igw": True,
     "nacl": True,
     "subnet": True,
-    "sg": True
+    "sg": True,
+    "route_table": True  # Add route_table to visibility states
 }
 
 resource_details = {
@@ -20,11 +21,15 @@ resource_details = {
     "igw": [],
     "nacl": [],
     "subnet": [],
-    "sg": []
+    "sg": [],
+    "route_table": []  # Add route_table to resource details
 }
 
 def init_app(app):
     """Register Flask routes."""
+
+    # Initial graph build
+    aws_resource.build_graph(visibility_states, resource_details)
 
     @app.route("/")
     def index():
