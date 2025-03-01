@@ -8,6 +8,26 @@ elb_client = None
 elbv2_client = None
 asg_client = None
 
+# Global resource details
+resource_details = {
+    "ec2": [],
+    "asg": [],
+    "elb": [],
+    "nat": [],
+    "igw": [],
+    "nacl": []
+}
+
+# Global visibility states
+visibility_states = {
+    "ec2": True,
+    "asg": True,
+    "elb": True,
+    "nat": True,
+    "igw": True,
+    "nacl": True
+}
+
 def set_clients(ec2, elb, elbv2, asg):
     """Initialize global AWS clients."""
     global ec2_client, elb_client, elbv2_client, asg_client
@@ -16,23 +36,35 @@ def set_clients(ec2, elb, elbv2, asg):
 def fetch_aws_data():
     """Periodically fetch AWS data."""
     while True:
-        build_graph()
-        time.sleep(120)  # Refresh every 2 minutes
+        build_graph(visibility_states, resource_details)
+        time.sleep(15)  # Refresh every 2 minutes
 
-def build_graph():
+def build_graph(visibility_states, resource_details):
     """Builds the AWS connectivity graph."""
     graph = nx.Graph()
     instance_info = {}
-    #fetch_ec2_instances(graph)
-    instance_info = fetch_ec2_instances2(graph, instance_info)
-    fetch_asgs(graph)
-    #fetch_load_balancers(graph)
-    fetch_load_balancers2(graph, instance_info)
-    fetch_nat_gateways(graph)
-    fetch_internet_gateways(graph)
-    fetch_network_acls(graph)
+    resource_details["ec2"] = []
+    resource_details["asg"] = []
+    resource_details["elb"] = []
+    resource_details["nat"] = []
+    resource_details["igw"] = []
+    resource_details["nacl"] = []
+
+    if visibility_states["ec2"]:
+        instance_info = fetch_ec2_instances2(graph, instance_info, resource_details["ec2"])
     subnet_mapping = fetch_subnets(graph)
+    if visibility_states["asg"]:
+        fetch_asgs(graph, resource_details["asg"])
+    if visibility_states["elb"]:
+        fetch_load_balancers2(graph, instance_info, resource_details["elb"])
+    if visibility_states["nat"]:
+        fetch_nat_gateways(graph, resource_details["nat"])
+    if visibility_states["igw"]:
+        fetch_internet_gateways(graph, resource_details["igw"])
+    if visibility_states["nacl"]:
+        fetch_network_acls(graph, resource_details["nacl"])
     fetch_route_tables(graph, subnet_mapping)
+    
     save_graph(graph)
 
 def fetch_ec2_instances(graph):
@@ -43,7 +75,7 @@ def fetch_ec2_instances(graph):
             inst_id = inst["InstanceId"]
             graph.add_node(inst_id, label=f"EC2: {inst_id}", color="green")
 
-def fetch_ec2_instances2(graph, instance_info):
+def fetch_ec2_instances2(graph, instance_info, details_list):
     """Fetch EC2 instances, add them to the graph, and connect them to security groups."""
     instances = ec2_client.describe_instances()
     for reservation in instances["Reservations"]:
@@ -51,24 +83,31 @@ def fetch_ec2_instances2(graph, instance_info):
             instance_id = instance["InstanceId"]
             subnet_id = instance["SubnetId"]
             instance_info[instance_id] = instance  # Store metadata
+            instance_name = next((tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"), instance_id)
 
             graph.add_node(
                 instance_id,
-                label=f"EC2: {instance_id}",
+                label=f"EC2: {instance_name}",
                 color="green",
                 title=f"Instance ID: {instance_id}\nSubnet: {subnet_id}\nState: {instance['State']['Name']}",
             )
+            # add the instance node to the subnet node
+            graph.add_edge(subnet_id, instance_id, color="gray", title="Located In")
 
             # Connect EC2 to its security groups
             for sg in instance.get("SecurityGroups", []):
                 sg_id = sg["GroupId"]
+                sg_name = sg["GroupName"]
+                graph.add_node(sg_id, label=f"SG: {sg_name}", color="blue")
+                #add the sg node to the instance node
                 graph.add_edge(instance_id, sg_id, color="gray", title="Attached to SG")
-                #graph.add_node()
 
-            # Connect EC2 to its subnet (this is handled in fetch_subnets)
+            # Add instance details to the details list
+            details_list.append(f"Instance ID: {instance_id}, Name: {instance_name}, State: {instance['State']['Name']}, Subnet: {subnet_id}")
+
     return instance_info
 
-def fetch_asgs(graph):
+def fetch_asgs(graph, details_list):
     """Fetch Auto Scaling Groups and link them to EC2 instances."""
     asgs = asg_client.describe_auto_scaling_groups()["AutoScalingGroups"]
     for asg in asgs:
@@ -76,6 +115,8 @@ def fetch_asgs(graph):
         graph.add_node(asg_name, label=f"ASG: {asg_name}", color="cyan")
         for instance in asg["Instances"]:
             graph.add_edge(asg_name, instance["InstanceId"], color="gray", title="ASG Manages")
+        # Add ASG details to the details list
+        details_list.append(f"ASG Name: {asg_name}, Instances: {len(asg['Instances'])}")
 
 def fetch_load_balancers(graph):
     """Fetch Load Balancers and link them to EC2 instances."""
@@ -97,7 +138,7 @@ def fetch_load_balancers(graph):
         for target_group in alb.get("TargetGroups", []):
             graph.add_edge(alb_name, target_group["TargetGroupName"], color="purple", title="ALB Directs To")
 
-def fetch_load_balancers2(graph, instance_info):
+def fetch_load_balancers2(graph, instance_info, details_list):
     """Fetch ALBs and ELBs, then link them to their EC2 instances."""
     alb_data = elbv2_client.describe_load_balancers()
     elb_data = elb_client.describe_load_balancers()
@@ -117,6 +158,9 @@ def fetch_load_balancers2(graph, instance_info):
                 if ec2_id in instance_info:
                     graph.add_edge(alb_arn, ec2_id, color="red", title="Routes Traffic to")
 
+        # Add ALB details to the details list
+        details_list.append(f"ALB Name: {alb_name}, ARN: {alb_arn}")
+
     # Classic Load Balancers (ELBs)
     for elb in elb_data["LoadBalancerDescriptions"]:
         elb_name = elb["LoadBalancerName"]
@@ -127,7 +171,10 @@ def fetch_load_balancers2(graph, instance_info):
             if ec2_id in instance_info:
                 graph.add_edge(elb_name, ec2_id, color="red", title="Routes Traffic to")
 
-def fetch_nat_gateways(graph):
+        # Add ELB details to the details list
+        details_list.append(f"ELB Name: {elb_name}")
+
+def fetch_nat_gateways(graph, details_list):
     """Fetch NAT Gateways and link them to subnets."""
     nat_client = boto3.client("ec2")
     nat_gateways = nat_client.describe_nat_gateways()["NatGateways"]
@@ -138,7 +185,10 @@ def fetch_nat_gateways(graph):
         graph.add_node(ngw_id, label=f"NAT GW: {ngw_id}", color="yellow")
         graph.add_edge(ngw_id, subnet_id, color="white", title="Located In")
 
-def fetch_internet_gateways(graph):
+        # Add NAT Gateway details to the details list
+        details_list.append(f"NAT Gateway ID: {ngw_id}, Subnet ID: {subnet_id}")
+
+def fetch_internet_gateways(graph, details_list):
     """Fetch Internet Gateways and link them to VPCs."""
     igw_client = boto3.client("ec2")
     igws = igw_client.describe_internet_gateways()["InternetGateways"]
@@ -152,7 +202,10 @@ def fetch_internet_gateways(graph):
             if vpc_id:
                 graph.add_edge(igw_id, vpc_id, color="orange", title="Attached to VPC")
 
-def fetch_network_acls(graph):
+        # Add Internet Gateway details to the details list
+        details_list.append(f"Internet Gateway ID: {igw_id}")
+
+def fetch_network_acls(graph, details_list):
     """Fetch Network ACLs and link them to subnets."""
     nacl_client = boto3.client("ec2")
     nacls = nacl_client.describe_network_acls()["NetworkAcls"]
@@ -165,6 +218,9 @@ def fetch_network_acls(graph):
             subnet_id = assoc["SubnetId"]
             graph.add_edge(nacl_id, subnet_id, color="gray", title="Applies to Subnet")
 
+        # Add Network ACL details to the details list
+        details_list.append(f"NACL ID: {nacl_id}")
+
 def fetch_subnets(graph):
     """Fetch subnets and add them to the graph."""
     subnets = ec2_client.describe_subnets()
@@ -172,10 +228,8 @@ def fetch_subnets(graph):
     for subnet in subnets["Subnets"]:
         subnet_id = subnet["SubnetId"]
         vpc_id = subnet["VpcId"]
-        if subnet["Tags"]:
-            name_tag = next((tag["Value"] for tag in subnet["Tags"] if tag["Key"] == "Name"), subnet_id)
+        name_tag = next((tag["Value"] for tag in subnet.get("Tags", []) if tag["Key"] == "Name"), subnet_id)
         graph.add_node(subnet_id, label=f"Subnet: {name_tag}", color="purple", title=f"Subnet in VPC {vpc_id}")
-       
         subnet_mapping[subnet_id] = vpc_id
     return subnet_mapping
 
@@ -220,3 +274,4 @@ def save_graph(graph):
             edge['title'] = edge['label']  # Display the label as a tooltip
     
     net.save_graph("templates/aws_graph.html")
+    net.save_graph("static/aws_graph.html")

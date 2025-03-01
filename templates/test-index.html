@@ -71,6 +71,33 @@
         .refresh-button:hover {
             background-color: #45a049;
         }
+        #details-sidebar {
+            width: 250px;
+            background: #333;
+            height: 100vh;
+            padding-top: 20px;
+            position: fixed;
+            right: 0;
+            transition: 0.3s;
+            overflow-y: auto;
+        }
+        #details-sidebar.collapsed {
+            width: 0;
+            padding-top: 0;
+        }
+        #details-sidebar h3 {
+            padding: 10px 20px;
+            margin: 0;
+            background: #444;
+        }
+        #details-sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #details-sidebar li {
+            padding: 10px 20px;
+            border-bottom: 1px solid #555;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +121,13 @@
         <iframe src="{{ url_for('static', filename='aws_graph.html') }}" id="graph-frame"></iframe>
     </div>
 
+    <!-- Sidebar for displaying details -->
+    <div id="details-sidebar" class="collapsed">
+        <h3 id="details-title">Details</h3>
+        <ul id="details-list"></ul>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         function refreshGraph() {
             document.getElementById("graph-frame").contentWindow.location.reload();
@@ -112,13 +146,40 @@
         }
 
         function toggleVisibility(resourceType) {
-            fetch(`/toggle/${resourceType}`, { method: "POST" })
+            fetchDetails(resourceType);
+            // fetch(`/toggle/${resourceType}`, { method: "POST" })
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         if (data.status === "success") {
+            //             refreshGraph();
+                        
+            //         } else {
+            //             alert("Error toggling visibility!");
+            //         }
+            //     });
+        }
+
+        function fetchDetails(resourceType) {
+            fetch(`/details/${resourceType}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === "success") {
-                        refreshGraph();
+                        let detailsSidebar = document.getElementById("details-sidebar");
+                        let detailsTitle = document.getElementById("details-title");
+                        let detailsList = document.getElementById("details-list");
+
+                        detailsTitle.textContent = `${resourceType.toUpperCase()} Details`;
+                        detailsList.innerHTML = "";
+
+                        data.details.forEach(detail => {
+                            let listItem = document.createElement("li");
+                            listItem.textContent = detail;
+                            detailsList.appendChild(listItem);
+                        });
+
+                        detailsSidebar.classList.remove("collapsed");
                     } else {
-                        alert("Error toggling visibility!");
+                        alert("Error fetching details!");
                     }
                 });
         }
