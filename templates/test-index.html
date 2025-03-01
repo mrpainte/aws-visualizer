@@ -40,7 +40,7 @@
         #content {
             margin-left: 250px;
             padding: 20px;
-            width: 100%;
+            width: calc(100% - 250px);
             transition: 0.3s;
         }
         #toggle-btn {
@@ -53,6 +53,19 @@
             color: white;
             border: none;
             border-radius: 5px;
+            transition: 0.3s;
+        }
+        #toggle-details-btn {
+            position: absolute;
+            top: 20px;
+            right: 260px;
+            cursor: pointer;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: 0.3s;
         }
         iframe {
             width: 100%;
@@ -113,6 +126,7 @@
     </div>
 
     <button id="toggle-btn" onclick="toggleSidebar()">☰</button>
+    <button id="toggle-details-btn" onclick="toggleDetailsSidebar()">☰</button>
 
     <!-- Main Content Area -->
     <div id="content">
@@ -136,27 +150,37 @@
         function toggleSidebar() {
             let sidebar = document.getElementById("sidebar");
             let content = document.getElementById("content");
+            let toggleBtn = document.getElementById("toggle-btn");
             if (sidebar.classList.contains("collapsed")) {
                 sidebar.classList.remove("collapsed");
                 content.style.marginLeft = "250px";
+                content.style.width = "calc(100% - 250px)";
+                toggleBtn.style.left = "260px";
             } else {
                 sidebar.classList.add("collapsed");
                 content.style.marginLeft = "50px";
+                content.style.width = "calc(100% - 50px)";
+                toggleBtn.style.left = "60px";
+            }
+        }
+
+        function toggleDetailsSidebar() {
+            let detailsSidebar = document.getElementById("details-sidebar");
+            let content = document.getElementById("content");
+            let toggleDetailsBtn = document.getElementById("toggle-details-btn");
+            if (detailsSidebar.classList.contains("collapsed")) {
+                detailsSidebar.classList.remove("collapsed");
+                content.style.width = "calc(100% - 500px)";
+                toggleDetailsBtn.style.right = "260px";
+            } else {
+                detailsSidebar.classList.add("collapsed");
+                content.style.width = "calc(100% - 250px)";
+                toggleDetailsBtn.style.right = "10px";
             }
         }
 
         function toggleVisibility(resourceType) {
             fetchDetails(resourceType);
-            // fetch(`/toggle/${resourceType}`, { method: "POST" })
-            //     .then(response => response.json())
-            //     .then(data => {
-            //         if (data.status === "success") {
-            //             refreshGraph();
-                        
-            //         } else {
-            //             alert("Error toggling visibility!");
-            //         }
-            //     });
         }
 
         function fetchDetails(resourceType) {
@@ -178,10 +202,21 @@
                         });
 
                         detailsSidebar.classList.remove("collapsed");
+                        adjustGraphWidth();
                     } else {
                         alert("Error fetching details!");
                     }
                 });
+        }
+
+        function adjustGraphWidth() {
+            let detailsSidebar = document.getElementById("details-sidebar");
+            let content = document.getElementById("content");
+            if (detailsSidebar.classList.contains("collapsed")) {
+                content.style.width = "calc(100% - 250px)";
+            } else {
+                content.style.width = "calc(100% - 500px)";
+            }
         }
     </script>
 

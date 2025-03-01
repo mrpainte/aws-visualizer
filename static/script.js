@@ -2,34 +2,80 @@
 function toggleSidebar() {
     let sidebar = document.getElementById("sidebar");
     let content = document.getElementById("content");
-    let graphFrame = document.getElementById("graph-frame");
-
-    sidebar.classList.toggle("closed");
-    graphFrame.classList.toggle("closed");
-
-    if (sidebar.classList.contains("closed")) {
-        content.style.marginLeft = "50px";
-    } else {
+    let toggleBtn = document.getElementById("toggle-btn");
+    if (sidebar.classList.contains("collapsed")) {
+        sidebar.classList.remove("collapsed");
         content.style.marginLeft = "250px";
+        content.style.width = "calc(100% - 250px)";
+        toggleBtn.style.left = "260px";
+    } else {
+        sidebar.classList.add("collapsed");
+        content.style.marginLeft = "50px";
+        content.style.width = "calc(100% - 50px)";
+        toggleBtn.style.left = "60px";
+    }
+}
+
+// Toggle details sidebar visibility
+function toggleDetailsSidebar() {
+    let detailsSidebar = document.getElementById("details-sidebar");
+    let content = document.getElementById("content");
+    let toggleDetailsBtn = document.getElementById("toggle-details-btn");
+    if (detailsSidebar.classList.contains("collapsed")) {
+        detailsSidebar.classList.remove("collapsed");
+        content.style.width = "calc(100% - 500px)";
+        toggleDetailsBtn.style.right = "260px";
+    } else {
+        detailsSidebar.classList.add("collapsed");
+        content.style.width = "calc(100% - 250px)";
+        toggleDetailsBtn.style.right = "10px";
     }
 }
 
 // Toggle visibility of AWS resource types (EC2, ASG, ELB, etc.)
-function toggleResource(type) {
-    fetch(`/toggle/${type}`, { method: "POST" })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "success") {
-                refreshGraph();
-            } else {
-                alert("Error toggling visibility!");
-            }
-        });
+function toggleVisibility(resourceType) {
+    fetchDetails(resourceType);
 }
 
 // Refresh the graph iframe to reflect new changes
 function refreshGraph() {
     document.getElementById("graph-frame").contentWindow.location.reload();
+}
+
+function fetchDetails(resourceType) {
+    fetch(`/details/${resourceType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                let detailsSidebar = document.getElementById("details-sidebar");
+                let detailsTitle = document.getElementById("details-title");
+                let detailsList = document.getElementById("details-list");
+
+                detailsTitle.textContent = `${resourceType.toUpperCase()} Details`;
+                detailsList.innerHTML = "";
+
+                data.details.forEach(detail => {
+                    let listItem = document.createElement("li");
+                    listItem.textContent = detail;
+                    detailsList.appendChild(listItem);
+                });
+
+                detailsSidebar.classList.remove("collapsed");
+                adjustGraphWidth();
+            } else {
+                alert("Error fetching details!");
+            }
+        });
+}
+
+function adjustGraphWidth() {
+    let detailsSidebar = document.getElementById("details-sidebar");
+    let content = document.getElementById("content");
+    if (detailsSidebar.classList.contains("collapsed")) {
+        content.style.width = "calc(100% - 250px)";
+    } else {
+        content.style.width = "calc(100% - 500px)";
+    }
 }
 
 // Auto-update the graph by fetching new AWS data
