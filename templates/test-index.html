@@ -4,74 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AWS Resource Visualization</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #222;
-            color: white;
-            display: flex;
-        }
-        #sidebar {
-            width: 250px;
-            background: #111;
-            height: 100vh;
-            padding-top: 20px;
-            position: fixed;
-            left: 0;
-            transition: 0.3s;
-        }
-        #sidebar a {
-            padding: 10px 20px;
-            display: block;
-            color: white;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-        #sidebar a:hover {
-            background: #575757;
-        }
-        #sidebar.collapsed {
-            width: 50px;
-        }
-        #sidebar.collapsed a span {
-            display: none;
-        }
-        #content {
-            margin-left: 250px;
-            padding: 20px;
-            width: 100%;
-            transition: 0.3s;
-        }
-        #toggle-btn {
-            position: absolute;
-            top: 20px;
-            left: 260px;
-            cursor: pointer;
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        iframe {
-            width: 100%;
-            height: 90vh;
-            border: none;
-        }
-        .refresh-button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .refresh-button:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
 </head>
 <body>
 
@@ -83,17 +16,37 @@
         <a href="#" onclick="toggleVisibility('nat')">🌐 <span>NAT Gateways</span></a>
         <a href="#" onclick="toggleVisibility('igw')">🛜 <span>Internet Gateways</span></a>
         <a href="#" onclick="toggleVisibility('nacl')">🔒 <span>Network ACLs</span></a>
+        <a href="#" onclick="toggleVisibility('subnet')">🌐 <span>Subnets</span></a>
+        <a href="#" onclick="toggleVisibility('sg')">🔒 <span>Security Groups</span></a>
+        <a href="#" onclick="toggleVisibility('route_table')">🗺️ <span>Route Tables</span></a>
     </div>
 
     <button id="toggle-btn" onclick="toggleSidebar()">☰</button>
+    <button id="toggle-details-btn" onclick="toggleDetailsSidebar()">☰</button>
 
     <!-- Main Content Area -->
     <div id="content">
         <h2>AWS Resource Graph</h2>
         <button class="refresh-button" onclick="refreshGraph()">Refresh Graph</button>
         <iframe src="{{ url_for('static', filename='aws_graph.html') }}" id="graph-frame"></iframe>
+        <table id="details-table">
+            <thead>
+                <tr>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody id="details-table-body">
+            </tbody>
+        </table>
     </div>
 
+    <!-- Sidebar for displaying details -->
+    <div id="details-sidebar" class="collapsed">
+        <h3 id="details-title">Details</h3>
+        <ul id="details-list"></ul>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         function refreshGraph() {
             document.getElementById("graph-frame").contentWindow.location.reload();
@@ -102,25 +55,81 @@
         function toggleSidebar() {
             let sidebar = document.getElementById("sidebar");
             let content = document.getElementById("content");
+            let toggleBtn = document.getElementById("toggle-btn");
             if (sidebar.classList.contains("collapsed")) {
                 sidebar.classList.remove("collapsed");
                 content.style.marginLeft = "250px";
+                content.style.width = "calc(100% - 250px)";
+                toggleBtn.style.left = "260px";
             } else {
                 sidebar.classList.add("collapsed");
                 content.style.marginLeft = "50px";
+                content.style.width = "calc(100% - 50px)";
+                toggleBtn.style.left = "60px";
+            }
+        }
+
+        function toggleDetailsSidebar() {
+            let detailsSidebar = document.getElementById("details-sidebar");
+            let content = document.getElementById("content");
+            let toggleDetailsBtn = document.getElementById("toggle-details-btn");
+            if (detailsSidebar.classList.contains("collapsed")) {
+                detailsSidebar.classList.remove("collapsed");
+                content.style.width = "calc(100% - 500px)";
+                toggleDetailsBtn.style.right = "260px";
+            } else {
+                detailsSidebar.classList.add("collapsed");
+                content.style.width = "calc(100% - 250px)";
+                toggleDetailsBtn.style.right = "10px";
             }
         }
 
         function toggleVisibility(resourceType) {
-            fetch(`/toggle/${resourceType}`, { method: "POST" })
+            fetchDetails(resourceType);
+        }
+
+        function fetchDetails(resourceType) {
+            fetch(`/details/${resourceType}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === "success") {
-                        refreshGraph();
+                        let detailsSidebar = document.getElementById("details-sidebar");
+                        let detailsTitle = document.getElementById("details-title");
+                        let detailsList = document.getElementById("details-list");
+                        let detailsTableBody = document.getElementById("details-table-body");
+
+                        detailsTitle.textContent = `${resourceType.toUpperCase()} Details`;
+                        detailsList.innerHTML = "";
+                        detailsTableBody.innerHTML = "";
+
+                        data.details.forEach(detail => {
+                            let listItem = document.createElement("li");
+                            listItem.textContent = detail;
+                            detailsList.appendChild(listItem);
+
+                            let tableRow = document.createElement("tr");
+                            let tableCell = document.createElement("td");
+                            tableCell.textContent = detail;
+                            tableRow.appendChild(tableCell);
+                            detailsTableBody.appendChild(tableRow);
+                        });
+
+                        detailsSidebar.classList.remove("collapsed");
+                        adjustGraphWidth();
                     } else {
-                        alert("Error toggling visibility!");
+                        alert("Error fetching details!");
                     }
                 });
+        }
+
+        function adjustGraphWidth() {
+            let detailsSidebar = document.getElementById("details-sidebar");
+            let content = document.getElementById("content");
+            if (detailsSidebar.classList.contains("collapsed")) {
+                content.style.width = "calc(100% - 250px)";
+            } else {
+                content.style.width = "calc(100% - 500px)";
+            }
         }
     </script>
 
