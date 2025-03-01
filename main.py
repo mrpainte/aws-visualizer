@@ -3,7 +3,31 @@ import boto3
 import threading
 import aws_resource
 import website
+from argparse import ArgumentParser, HelpFormatter
+from botocore.exceptions import ClientError, ProfileNotFound
+import logging
 
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+
+# parse arguments
+formatter = lambda prog: HelpFormatter(prog, max_help_position=52)
+parser = ArgumentParser(formatter_class=formatter)
+
+parser.add_argument("-v", "--vpc", required=True, help="The VPC to describe")
+parser.add_argument("-r", "--region", default="us-west-2", help="AWS region that the VPC resides in")
+parser.add_argument("-p", '--profile', default='default', help="AWS profile")
+args = parser.parse_args()
+
+try:
+    # session = boto3.Session(profile_name=args.profile) # Gives Error: You are not authorized to perform this operation.
+    session = boto3.Session(region_name=args.region) # This Works!
+except ProfileNotFound as e:
+    logger.warning(f"{e}, please provide a valid AWS profile name")
+    exit(-1)
+
+# Initialize Flask app
 app = Flask(__name__)
 
 # AWS Clients
